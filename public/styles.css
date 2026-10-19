@@ -17,7 +17,7 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; }
+html, body { margin: 0; max-width: 100%; overflow-x: hidden; }
 body {
   background: var(--bg);
   color: var(--ink);
@@ -46,7 +46,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* ---------- Layout ---------- */
 .app {
-  max-width: 460px; margin: 0 auto;
+  width: 100%; max-width: 460px; margin: 0 auto; min-width: 0;
   padding: calc(28px + env(safe-area-inset-top)) 22px calc(32px + env(safe-area-inset-bottom));
 }
 .brand { text-align: center; }
@@ -56,7 +56,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .brand--splash .brand__title { font-size: 42px; }
 .brand__by { margin: 6px 0 0; color: var(--ink-soft); font-size: 19px; font-weight: 500; }
 
-.screen { display: none; margin-top: 30px; }
+.screen { display: none; margin-top: 30px; min-width: 0; }
 .screen.is-active { display: block; animation: fade .35s ease both; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -99,6 +99,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   transition: transform .12s, background .2s;
 }
 .btn-wa:active { transform: scale(.97); background: var(--wa-deep); }
+.btn-wa span { white-space: nowrap; }
 .btn-wa__icon { width: 24px; height: 24px; flex: none; }
 .btn-wa__icon .wa-bubble { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round; }
 .btn-wa__icon .wa-phone { fill: currentColor; }
@@ -127,10 +128,18 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 .error { color: var(--terra-deep); text-align: center; margin: 14px 0 0; font-size: 16px; }
 
-.history { margin-top: 30px; }
-.history__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.btn-history {
+  margin: 22px auto 0; display: flex; align-items: center; gap: 8px;
+  padding: 8px 18px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: var(--card); color: var(--ink-soft); font-size: 16px;
+}
+.btn-history span { white-space: nowrap; }
+.btn-history .icon { width: 18px; height: 18px; color: var(--sage-deep); }
+.btn-history:active { background: var(--sage-tint); }
+
+.history__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .history__item {
-  display: flex; align-items: center; gap: 10px;
+  min-width: 0; display: flex; align-items: center; gap: 10px;
   background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px;
 }
 .history__open { flex: 1; min-width: 0; text-align: right; }
@@ -231,6 +240,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .steps__ic { width: 18px; height: 18px; vertical-align: -3px; margin-inline-start: 4px; color: var(--wa-deep); }
 .sheet__note { margin: 14px 4px 0; color: var(--ink-soft); font-size: 15px; text-align: center; }
 .sheet__ok { margin-top: 18px; font-size: 21px; padding: 14px; }
+.sheet__panel--tall { max-height: 82dvh; display: flex; flex-direction: column; }
+.sheet__panel--tall .history__list { overflow-y: auto; flex: 1 1 auto; padding-bottom: 2px; }
+.sheet__close { margin-top: 16px; font-size: 19px; }
 
 /* ---------- Toast ---------- */
 .toast {

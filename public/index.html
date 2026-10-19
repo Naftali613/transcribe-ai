@@ -68,11 +68,10 @@
       <button id="btn-start" class="btn-primary" disabled>התחל תמלול</button>
       <p id="home-error" class="error" hidden></p>
 
-      <section class="history">
-        <h3 class="label">היסטוריית תמלולים</h3>
-        <ul id="history-list" class="history__list"></ul>
-        <p id="history-empty" class="history__empty">עדיין אין תמלולים</p>
-      </section>
+      <button id="btn-history" class="btn-history" type="button">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+        <span>היסטוריית תמלולים</span>
+      </button>
     </section>
 
     <!-- Loading -->
@@ -128,6 +127,19 @@
     </section>
   </main>
 
+
+
+  <!-- History sheet -->
+  <div id="hist-sheet" class="sheet" hidden>
+    <div class="sheet__scrim" data-close></div>
+    <div class="sheet__panel sheet__panel--tall" role="dialog" aria-modal="true" aria-labelledby="hist-title">
+      <div class="sheet__grip"></div>
+      <h2 id="hist-title" class="sheet__title">היסטוריית תמלולים</h2>
+      <ul id="history-list" class="history__list"></ul>
+      <p id="history-empty" class="history__empty">עדיין אין תמלולים</p>
+      <button class="link sheet__close" type="button" data-close>סגירה</button>
+    </div>
+  </div>
 
   <!-- WhatsApp how-to sheet -->
   <div id="wa-sheet" class="sheet" hidden>

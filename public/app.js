@@ -32,19 +32,23 @@
   }
 
   $('file-input').addEventListener('change', (e) => setFile(e.target.files[0] || null));
-  // WhatsApp how-to sheet
-  const sheet = $('wa-sheet');
-  function openSheet() {
-    sheet.hidden = false;
-    requestAnimationFrame(() => sheet.classList.add('is-open'));
+  // Bottom sheets (WhatsApp how-to, history)
+  function openSheet(el) {
+    el.hidden = false;
+    requestAnimationFrame(() => el.classList.add('is-open'));
   }
-  function closeSheet() {
-    sheet.classList.remove('is-open');
-    setTimeout(() => { sheet.hidden = true; }, 280);
+  function closeSheet(el) {
+    el.classList.remove('is-open');
+    setTimeout(() => { el.hidden = true; }, 280);
   }
-  $('btn-whatsapp').addEventListener('click', openSheet);
-  sheet.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+  document.querySelectorAll('.sheet').forEach((el) => {
+    el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => closeSheet(el)));
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.sheet:not([hidden])').forEach(closeSheet);
+  });
+  $('btn-whatsapp').addEventListener('click', () => openSheet($('wa-sheet')));
+  $('btn-history').addEventListener('click', () => { renderHistory(); openSheet($('hist-sheet')); });
 
   $('file-remove').addEventListener('click', () => { $('file-input').value = ''; setFile(null); });
 
@@ -329,7 +333,7 @@
       const d = new Date(item.at);
       meta.textContent = d.toLocaleDateString('he-IL') + ' · ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
       open.append(snip, meta);
-      open.addEventListener('click', () => openResult(item.text, null, item.id));
+      open.addEventListener('click', () => { closeSheet($('hist-sheet')); openResult(item.text, null, item.id); });
 
       const del = document.createElement('button');
       del.className = 'history__del';
