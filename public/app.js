@@ -5,6 +5,12 @@
   const SHARE_KEY = '/shared-audio';
   const RING_LEN = 326.7;
 
+  const fmt = (s) => {
+    if (!isFinite(s)) return '00:00';
+    s = Math.floor(s);
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  };
+
   const state = { file: null, lang: 'he', xhr: null, creep: null, url: null, editing: false };
 
   /* ---------- Screens ---------- */
@@ -58,6 +64,130 @@
     b.setAttribute('aria-checked', 'true');
     state.lang = b.dataset.lang;
   }));
+
+  /* ---------- Record in app (hold to talk) ---------- */
+  const rec = { stream: null, mr: null, chunks: [], start: 0, tick: null, file: null, url: null, dur: 0, holding: false };
+  const recBtn = $('btn-rec');
+  const recAudio = $('rec-audio');
+
+  function pickMime() {
+    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    if (!window.MediaRecorder) return null;
+    return types.find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  async function recStart(e) {
+    e.preventDefault();
+    if (rec.mr) return;
+    rec.holding = true;
+    try { recBtn.setPointerCapture(e.pointerId); } catch (_) {}
+    if (pickMime() === null || !navigator.mediaDevices) {
+      toast('הדפדפן לא תומך בהקלטה');
+      return;
+    }
+    try {
+      if (!rec.stream || !rec.stream.active) {
+        rec.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      }
+    } catch (_) {
+      rec.holding = false;
+      toast('צריך לאשר גישה למיקרופון');
+      return;
+    }
+    // Finger lifted while the permission prompt was open — don't start.
+    if (!rec.holding) { releaseMic(); toast('עכשיו החזק את הכפתור ודבר'); return; }
+
+    const mime = pickMime();
+    rec.chunks = [];
+    rec.mr = new MediaRecorder(rec.stream, mime ? { mimeType: mime } : undefined);
+    rec.mr.ondataavailable = (ev) => { if (ev.data && ev.data.size) rec.chunks.push(ev.data); };
+    rec.mr.onstop = recFinish;
+    rec.mr.start(250);
+    rec.start = Date.now();
+    if (navigator.vibrate) navigator.vibrate(30);
+    recBtn.classList.add('is-rec');
+    $('rec-hint').textContent = 'שחרר כדי לסיים';
+    $('rec-timer').hidden = false;
+    $('rec-timer').textContent = '00:00';
+    rec.tick = setInterval(() => { $('rec-timer').textContent = fmt((Date.now() - rec.start) / 1000); }, 250);
+  }
+
+  function recStop() {
+    rec.holding = false;
+    if (!rec.mr || rec.mr.state === 'inactive') return;
+    rec.dur = (Date.now() - rec.start) / 1000;
+    rec.mr.stop();
+  }
+
+  function recResetIdle() {
+    clearInterval(rec.tick);
+    recBtn.classList.remove('is-rec');
+    $('rec-hint').textContent = 'החזק לחוץ ודבר';
+    $('rec-timer').hidden = true;
+  }
+
+  function releaseMic() {
+    if (rec.stream) rec.stream.getTracks().forEach((t) => t.stop());
+    rec.stream = null;
+  }
+
+  function recFinish() {
+    const type = rec.mr.mimeType || 'audio/webm';
+    rec.mr = null;
+    recResetIdle();
+    releaseMic();
+    if (rec.dur < 0.8) {
+      toast('ההקלטה קצרה מדי — החזק לחוץ בזמן הדיבור');
+      return;
+    }
+    const ext = type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm';
+    const blob = new Blob(rec.chunks, { type });
+    const stamp = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }).replace(':', '-');
+    rec.file = new File([blob], `הקלטה-${stamp}.${ext}`, { type });
+    if (rec.url) URL.revokeObjectURL(rec.url);
+    rec.url = URL.createObjectURL(blob);
+    recAudio.src = rec.url;
+    $('rec-time').textContent = fmt(rec.dur);
+    $('rec-prog').style.width = '0%';
+    $('rec-idle').hidden = true;
+    $('rec-review').hidden = false;
+  }
+
+  function recClear() {
+    recAudio.pause();
+    recAudio.removeAttribute('src');
+    if (rec.url) URL.revokeObjectURL(rec.url);
+    rec.url = null;
+    rec.file = null;
+    $('rec-review').hidden = true;
+    $('rec-idle').hidden = false;
+  }
+
+  recBtn.addEventListener('pointerdown', recStart);
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => recBtn.addEventListener(ev, recStop));
+  recBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  $('rec-play').addEventListener('click', () => { recAudio.paused ? recAudio.play() : recAudio.pause(); });
+  recAudio.addEventListener('play', () => { $('rec-ic-play').hidden = true; $('rec-ic-pause').hidden = false; });
+  const recPaused = () => { $('rec-ic-play').hidden = false; $('rec-ic-pause').hidden = true; };
+  recAudio.addEventListener('pause', recPaused);
+  recAudio.addEventListener('ended', () => { recPaused(); $('rec-prog').style.width = '100%'; $('rec-time').textContent = fmt(rec.dur); });
+  recAudio.addEventListener('timeupdate', () => {
+    const d = isFinite(recAudio.duration) && recAudio.duration > 0 ? recAudio.duration : rec.dur;
+    $('rec-prog').style.width = Math.min(100, (recAudio.currentTime / d) * 100) + '%';
+    $('rec-time').textContent = fmt(recAudio.currentTime);
+  });
+
+  $('rec-discard').addEventListener('click', recClear);
+  $('rec-again').addEventListener('click', () => { recClear(); toast('החזק לחוץ ודבר'); });
+  $('rec-ok').addEventListener('click', () => {
+    if (!rec.file) return;
+    const f = rec.file;
+    recAudio.pause();
+    $('rec-review').hidden = true;
+    $('rec-idle').hidden = false;
+    transcribe(f, state.lang);
+  });
 
   /* ---------- Progress ring ---------- */
   function setProgress(p) {
@@ -203,12 +333,6 @@
 
   /* ---------- Player ---------- */
   const audio = $('audio');
-  const fmt = (s) => {
-    if (!isFinite(s)) return '00:00';
-    s = Math.floor(s);
-    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
-  };
-
   function buildWave(seed) {
     const w = $('wave');
     w.innerHTML = '';

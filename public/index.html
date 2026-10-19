@@ -59,6 +59,45 @@
         </button>
       </div>
 
+      <!-- Record in app -->
+      <div class="card rec" id="rec-card">
+        <div id="rec-idle" class="rec__idle">
+          <h2 class="rec__title">הקלטה מתוך האפליקציה</h2>
+          <button id="btn-rec" class="rec__btn" type="button" aria-label="החזק כדי להקליט">
+            <span class="rec__pulse" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+          </button>
+          <p id="rec-hint" class="rec__hint">החזק לחוץ ודבר</p>
+          <p id="rec-timer" class="rec__timer" dir="ltr" hidden>00:00</p>
+        </div>
+
+        <div id="rec-review" class="rec__review" hidden>
+          <button id="rec-discard" class="rec__x" type="button" aria-label="ביטול">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <h2 class="rec__title">ההקלטה שלך</h2>
+          <div class="mini" dir="ltr">
+            <button id="rec-play" class="mini__play" type="button" aria-label="נגן">
+              <svg id="rec-ic-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="rec-ic-pause" viewBox="0 0 24 24" hidden><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+            </button>
+            <div class="mini__bar"><span id="rec-prog"></span></div>
+            <span id="rec-time" class="mini__time">00:00</span>
+            <audio id="rec-audio" preload="auto"></audio>
+          </div>
+          <div class="rec__actions">
+            <button id="rec-again" class="btn-outline" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              <span>הקלט שוב</span>
+            </button>
+            <button id="rec-ok" class="btn-confirm" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+              <span>אישור ותמלול</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <h3 class="label">שפת הקלטה</h3>
       <div class="langs" role="radiogroup" aria-label="שפת הקלטה">
         <button class="lang is-on" data-lang="he" role="radio" aria-checked="true">עברית</button>

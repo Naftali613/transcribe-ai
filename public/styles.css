@@ -213,6 +213,57 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .btn-action .icon { width: 20px; height: 20px; }
 .btn-action.is-on { background: var(--terra-deep); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
 
+/* ---------- Record in app ---------- */
+.rec { margin-top: 16px; padding: 18px 20px 20px; position: relative; text-align: center; }
+.rec__title { margin: 0; font-size: 22px; font-weight: 600; }
+.rec__idle .rec__title { margin-bottom: 16px; }
+.rec__btn {
+  position: relative; width: 84px; height: 84px; border-radius: 50%;
+  background: var(--terra); color: #FFF7F2; display: grid; place-items: center; margin: 0 auto;
+  box-shadow: 0 6px 18px rgba(194, 100, 75, .3);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: transform .18s ease, background .2s;
+}
+.rec__btn svg { width: 36px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; position: relative; z-index: 1; }
+.rec__btn svg rect { fill: currentColor; }
+.rec__pulse { position: absolute; inset: 0; border-radius: 50%; background: var(--terra); opacity: 0; }
+.rec__btn.is-rec { transform: scale(1.18); background: var(--terra-deep); }
+.rec__btn.is-rec .rec__pulse { animation: pulse 1.3s ease-out infinite; }
+@keyframes pulse { 0% { transform: scale(1); opacity: .45; } 100% { transform: scale(1.55); opacity: 0; } }
+.rec__hint { margin: 24px 0 0; color: var(--ink-soft); font-size: 17px; }
+.rec__timer { margin: 4px 0 0; font-size: 20px; font-weight: 600; color: var(--terra-deep); font-variant-numeric: tabular-nums; }
+
+.rec__review { animation: fade .3s ease both; }
+.rec__x {
+  position: absolute; top: 8px; left: 8px; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; color: var(--sage-deep);
+}
+.rec__x:active { background: var(--sage-tint); }
+.rec__x .icon { width: 20px; height: 20px; }
+
+.mini {
+  margin: 16px 0 0; display: flex; align-items: center; gap: 12px;
+  background: var(--sage); border-radius: 999px; padding: 8px 16px 8px 8px;
+}
+.mini__play { width: 42px; height: 42px; border-radius: 50%; background: var(--ink); display: grid; place-items: center; flex: none; }
+.mini__play svg { width: 20px; height: 20px; fill: #fff; }
+.mini__bar { flex: 1; height: 5px; border-radius: 3px; background: var(--card); overflow: hidden; }
+.mini__bar span { display: block; height: 100%; width: 0; background: var(--ink); }
+.mini__time { font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.rec__actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 16px; }
+.btn-outline, .btn-confirm {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 6px; border-radius: 14px; font-size: 18px; font-weight: 600;
+  transition: transform .12s, background .2s;
+}
+.btn-outline span, .btn-confirm span { white-space: nowrap; }
+.btn-outline { border: 1.5px solid var(--sage); color: var(--ink); background: var(--card); }
+.btn-outline .icon { width: 19px; height: 19px; color: var(--sage-deep); }
+.btn-confirm { background: var(--terra); color: #FFF7F2; box-shadow: 0 4px 14px rgba(194, 100, 75, .25); }
+.btn-confirm .icon { width: 20px; height: 20px; stroke-width: 2.2; }
+.btn-outline:active, .btn-confirm:active { transform: scale(.97); }
+
 /* ---------- Sheet ---------- */
 .sheet { position: fixed; inset: 0; z-index: 40; }
 .sheet__scrim { position: absolute; inset: 0; background: rgba(42, 41, 38, .38); opacity: 0; transition: opacity .28s ease; }
