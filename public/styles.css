@@ -204,6 +204,34 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .btn-action .icon { width: 20px; height: 20px; }
 .btn-action.is-on { background: var(--terra-deep); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
 
+/* ---------- Sheet ---------- */
+.sheet { position: fixed; inset: 0; z-index: 40; }
+.sheet__scrim { position: absolute; inset: 0; background: rgba(42, 41, 38, .38); opacity: 0; transition: opacity .28s ease; }
+.sheet__panel {
+  position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 460px;
+  background: var(--bg); border-radius: 24px 24px 0 0;
+  padding: 10px 24px calc(24px + env(safe-area-inset-bottom));
+  transform: translateY(100%); transition: transform .28s cubic-bezier(.2,.7,.2,1);
+  box-shadow: 0 -8px 30px rgba(42, 41, 38, .15);
+}
+.sheet.is-open .sheet__scrim { opacity: 1; }
+.sheet.is-open .sheet__panel { transform: none; }
+.sheet__grip { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+.sheet__title { margin: 0 0 16px; font-size: 23px; font-weight: 700; text-align: center; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.steps li {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px;
+  font-size: 18px; line-height: 1.4;
+}
+.steps__n {
+  width: 32px; height: 32px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: var(--wa); color: #fff; font-weight: 700;
+}
+.steps__ic { width: 18px; height: 18px; vertical-align: -3px; margin-inline-start: 4px; color: var(--wa-deep); }
+.sheet__note { margin: 14px 4px 0; color: var(--ink-soft); font-size: 15px; text-align: center; }
+.sheet__ok { margin-top: 18px; font-size: 21px; padding: 14px; }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));

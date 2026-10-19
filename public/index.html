@@ -50,13 +50,13 @@
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg>
           <span>להעלאת קובץ</span>
         </label>
-        <a id="btn-whatsapp" class="btn-wa" href="whatsapp://send" rel="noopener">
+        <button id="btn-whatsapp" class="btn-wa" type="button">
           <svg class="btn-wa__icon" viewBox="0 0 32 32" aria-hidden="true">
             <path class="wa-bubble" d="M16 3.2C9 3.2 3.3 8.8 3.3 15.8c0 2.3.6 4.5 1.8 6.4L3.2 28.8l6.8-1.8c1.8 1 3.9 1.5 6 1.5 7 0 12.7-5.7 12.7-12.7S23 3.2 16 3.2z"/>
             <path class="wa-phone" d="M12.2 9.6c-.3-.6-.6-.6-.9-.6h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4s1.5 3.9 1.7 4.2c.2.3 2.8 4.5 7 6.1 3.5 1.4 4.2 1.1 4.9 1 .8-.1 2.4-1 2.8-1.9.3-.9.3-1.7.2-1.9-.1-.2-.4-.3-.8-.5s-2.4-1.2-2.8-1.3c-.4-.1-.6-.2-.9.2-.3.4-1.1 1.3-1.3 1.6-.2.3-.5.3-.9.1-.4-.2-1.7-.6-3.2-2-1.2-1.1-2-2.4-2.2-2.8-.2-.4 0-.6.2-.8l.6-.7c.2-.2.3-.4.4-.7.1-.3.1-.5 0-.7-.1-.2-.8-2.2-1.2-2.9z"/>
           </svg>
           <span>העלאה מתוך WhatsApp</span>
-        </a>
+        </button>
       </div>
 
       <h3 class="label">שפת הקלטה</h3>
@@ -127,6 +127,24 @@
       <button id="btn-new" class="link">תמלול חדש</button>
     </section>
   </main>
+
+
+  <!-- WhatsApp how-to sheet -->
+  <div id="wa-sheet" class="sheet" hidden>
+    <div class="sheet__scrim" data-close></div>
+    <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="wa-title">
+      <div class="sheet__grip"></div>
+      <h2 id="wa-title" class="sheet__title">העלאה מתוך WhatsApp</h2>
+      <ol class="steps">
+        <li><span class="steps__n">1</span><span>פותחים את WhatsApp ונכנסים לצ'אט עם ההקלטה</span></li>
+        <li><span class="steps__n">2</span><span>לחיצה ארוכה על ההקלטה, ואז על <b>שיתוף</b>
+          <svg class="icon steps__ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.5M8.2 13.2l7.6 4.5"/></svg></span></li>
+        <li><span class="steps__n">3</span><span>בוחרים <b>תמלול AI</b> והתמלול מתחיל לבד</span></li>
+      </ol>
+      <p class="sheet__note">לא רואים את "תמלול AI" ברשימה? צריך קודם להתקין את האפליקציה: בכרום ⋮ ← הוספה למסך הבית.</p>
+      <button class="btn-primary sheet__ok" type="button" data-close>הבנתי</button>
+    </div>
+  </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/app.js"></script>

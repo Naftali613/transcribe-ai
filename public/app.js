@@ -32,10 +32,19 @@
   }
 
   $('file-input').addEventListener('change', (e) => setFile(e.target.files[0] || null));
-  // Open the WhatsApp app installed on this device
-  if (/android/i.test(navigator.userAgent)) {
-    $('btn-whatsapp').href = 'intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=https%3A%2F%2Fwa.me%2F;end';
+  // WhatsApp how-to sheet
+  const sheet = $('wa-sheet');
+  function openSheet() {
+    sheet.hidden = false;
+    requestAnimationFrame(() => sheet.classList.add('is-open'));
   }
+  function closeSheet() {
+    sheet.classList.remove('is-open');
+    setTimeout(() => { sheet.hidden = true; }, 280);
+  }
+  $('btn-whatsapp').addEventListener('click', openSheet);
+  sheet.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
 
   $('file-remove').addEventListener('click', () => { $('file-input').value = ''; setFile(null); });
 
