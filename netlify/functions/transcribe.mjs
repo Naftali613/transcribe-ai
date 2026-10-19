@@ -13,7 +13,7 @@ const json = (status, body) =>
 export default async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
 
-  const key = Netlify.env.get('GROQ_API_KEY');
+  const key = Netlify.env.get('GROQ_API_KEY') || process.env.GROQ_API_KEY;
   if (!key) return json(500, { error: 'מפתח ה-API לא הוגדר בשרת.' });
 
   let form;
