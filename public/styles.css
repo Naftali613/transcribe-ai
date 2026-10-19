@@ -10,6 +10,8 @@
   --terra: #C2644B;
   --terra-deep: #A9533C;
   --terra-tint: #EDD3C9;
+  --wa: #5A9C74;
+  --wa-deep: #4A8562;
   --radius: 18px;
   --shadow: 0 1px 2px rgba(60, 50, 30, .06), 0 6px 20px rgba(60, 50, 30, .06);
 }
@@ -87,6 +89,19 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .pick:active { background: var(--sage-tint); border-color: var(--sage-deep); }
 .pick .icon { color: var(--sage-deep); }
+
+.btn-wa {
+  margin: 14px auto 0; display: flex; width: fit-content; align-items: center; gap: 10px;
+  padding: 11px 24px; border-radius: 999px;
+  background: var(--wa); color: #F7FBF6; text-decoration: none;
+  font-size: 18px; font-weight: 600;
+  box-shadow: 0 4px 14px rgba(79, 145, 106, .28);
+  transition: transform .12s, background .2s;
+}
+.btn-wa:active { transform: scale(.97); background: var(--wa-deep); }
+.btn-wa__icon { width: 24px; height: 24px; flex: none; }
+.btn-wa__icon .wa-bubble { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linejoin: round; }
+.btn-wa__icon .wa-phone { fill: currentColor; }
 
 .label { margin: 28px 2px 10px; font-size: 20px; font-weight: 600; }
 

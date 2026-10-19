@@ -32,6 +32,11 @@
   }
 
   $('file-input').addEventListener('change', (e) => setFile(e.target.files[0] || null));
+  // Open the WhatsApp app installed on this device
+  if (/android/i.test(navigator.userAgent)) {
+    $('btn-whatsapp').href = 'intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=https%3A%2F%2Fwa.me%2F;end';
+  }
+
   $('file-remove').addEventListener('click', () => { $('file-input').value = ''; setFile(null); });
 
   document.querySelectorAll('.lang').forEach((b) => b.addEventListener('click', () => {
