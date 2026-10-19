@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F4EFE6">
+  <title>תמלול הקלטות AI</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- Splash -->
+  <div id="splash" class="splash" aria-hidden="true">
+    <div class="brand brand--splash">
+      <img class="brand__logo" src="/logo.png" alt="">
+      <h1 class="brand__title">תמלול הקלטות <span dir="ltr">AI</span></h1>
+      <p class="brand__by" dir="ltr">by Naftali Fishman</p>
+    </div>
+  </div>
+
+  <main class="app">
+    <header class="brand">
+      <img class="brand__logo" src="/logo.png" alt="לוגו">
+      <h1 class="brand__title">תמלול הקלטות <span dir="ltr">AI</span></h1>
+      <p class="brand__by" dir="ltr">by Naftali Fishman</p>
+    </header>
+
+    <!-- Home -->
+    <section id="screen-home" class="screen is-active">
+      <div class="card upload">
+        <div class="upload__head">
+          <h2>העלאת קובץ קול</h2>
+          <svg class="icon icon--file" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13v3M11.5 11.5v6M14 13v3"/></svg>
+        </div>
+        <div id="file-chip" class="file-chip" hidden>
+          <button id="file-remove" class="file-chip__x" aria-label="הסר קובץ">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <span id="file-name" class="file-chip__name" dir="auto"></span>
+          <svg class="icon icon--muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
+        </div>
+        <label class="pick">
+          <input id="file-input" type="file" accept="audio/*,.opus,.ogg,.m4a,.mp3,.wav,.aac,.amr,.webm,.mp4" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg>
+          <span>להעלאת קובץ</span>
+        </label>
+      </div>
+
+      <h3 class="label">שפת הקלטה</h3>
+      <div class="langs" role="radiogroup" aria-label="שפת הקלטה">
+        <button class="lang is-on" data-lang="he" role="radio" aria-checked="true">עברית</button>
+        <button class="lang" data-lang="en" role="radio" aria-checked="false">אנגלית</button>
+      </div>
+
+      <button id="btn-start" class="btn-primary" disabled>התחל תמלול</button>
+      <p id="home-error" class="error" hidden></p>
+
+      <section class="history">
+        <h3 class="label">היסטוריית תמלולים</h3>
+        <ul id="history-list" class="history__list"></ul>
+        <p id="history-empty" class="history__empty">עדיין אין תמלולים</p>
+      </section>
+    </section>
+
+    <!-- Loading -->
+    <section id="screen-loading" class="screen">
+      <div class="ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ring__track" cx="60" cy="60" r="52"/>
+          <circle id="ring-bar" class="ring__bar" cx="60" cy="60" r="52"/>
+        </svg>
+      </div>
+      <p class="loading__text">טוען... אנא המתן</p>
+      <p id="loading-pct" class="loading__pct" dir="ltr">0%</p>
+      <button id="btn-cancel" class="link">ביטול</button>
+    </section>
+
+    <!-- Result -->
+    <section id="screen-result" class="screen">
+      <div id="player" class="player">
+        <div class="player__row">
+          <button id="btn-play" class="player__play" aria-label="נגן">
+            <svg id="ic-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="ic-pause" viewBox="0 0 24 24" hidden><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+          </button>
+          <button id="btn-skip" class="player__skip" aria-label="קדימה 10 שניות">
+            <svg viewBox="0 0 24 24"><path d="M6 5v14l9-7zM16 5h3v14h-3z"/></svg>
+          </button>
+          <div id="wave" class="wave" aria-hidden="true"></div>
+        </div>
+        <input id="seek" class="seek" type="range" min="0" max="1000" value="0" dir="ltr" aria-label="מיקום">
+        <div class="player__times" dir="ltr"><span id="t-cur">00:00</span><span id="t-dur">00:00</span></div>
+        <audio id="audio" preload="metadata"></audio>
+      </div>
+
+      <div class="card text-card">
+        <div id="transcript" class="transcript" dir="auto" spellcheck="false"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-edit" class="btn-action">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+          <span>עריכה</span>
+        </button>
+        <button id="btn-copy" class="btn-action">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>
+          <span>העתקה</span>
+        </button>
+        <button id="btn-share" class="btn-action">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.5M8.2 13.2l7.6 4.5"/></svg>
+          <span>שיתוף</span>
+        </button>
+      </div>
+      <button id="btn-new" class="link">תמלול חדש</button>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
