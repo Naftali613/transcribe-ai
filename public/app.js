@@ -1,11 +1,10 @@
 (() => {
   const $ = (id) => document.getElementById(id);
-  const DB = window.PendingDB;
+  const DB = window.SlotDB;
   const HISTORY_KEY = 'transcripts.v1';
   const SHARE_CACHE = 'share-inbox';
   const SHARE_KEY = '/shared-audio';
   const RING_LEN = 326.7;
-  const SYNC_TAG = 'transcribe-pending';
 
   const fmt = (s) => {
     if (!isFinite(s)) return '00:00';
@@ -13,7 +12,7 @@
     return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
   };
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  const fileOf = (it) => (it.blob ? new File([it.blob], it.name || 'הקלטה.webm', { type: it.type || it.blob.type || 'audio/webm' }) : null);
+  const fileOf = (it) => (it && it.blob ? new File([it.blob], it.name || 'הקלטה.webm', { type: it.type || it.blob.type || 'audio/webm' }) : null);
 
   const state = { file: null, lang: 'he', xhr: null, creep: null, url: null, editing: false, cancelled: false };
 
@@ -34,8 +33,10 @@
   }
 
   // Top banner with an optional action button
-  function notice(text, actionLabel, action, ms = 7000) {
+  function notice(text, { tone = 'dark', actionLabel, action, ms = 6000 } = {}) {
     const n = $('notice');
+    n.classList.toggle('is-ok', tone === 'ok');
+    n.classList.toggle('is-warn', tone === 'warn');
     $('notice-text').textContent = text;
     const b = $('notice-btn');
     b.hidden = !actionLabel;
@@ -54,8 +55,12 @@
   $('notice-x').addEventListener('click', hideNotice);
 
   /* ---------- File selection ---------- */
-  function setFile(file) {
+  function setFile(file, { persist = true } = {}) {
     state.file = file;
+    if (persist) {
+      if (file) DB.put({ id: 'file', blob: file, name: file.name || 'הקלטה', type: file.type || '' });
+      else DB.del('file');
+    }
     $('file-chip').hidden = !file;
     $('file-name').textContent = file ? (file.name || 'הקלטה') : '';
     $('btn-start').disabled = !file;
@@ -167,9 +172,9 @@
     const ext = type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm';
     const blob = new Blob(rec.chunks, { type });
     const stamp = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }).replace(':', '-');
-    const item = { id: newId(), blob, name: `הקלטה-${stamp}.${ext}`, type, lang: state.lang, at: Date.now(), dur: rec.dur, status: 'draft' };
+    const item = { id: 'rec', blob, name: `הקלטה-${stamp}.${ext}`, type, at: Date.now(), dur: rec.dur };
     // Save to the device right away — nothing is lost if the app closes now.
-    try { await DB.put(item); } catch (_) {}
+    await DB.put(item);
     showReview(item);
   }
 
@@ -198,7 +203,7 @@
     const it = rec.item;
     if (!it) return hideReview();
     if ((it.dur || 0) > 15 && !confirm('למחוק את ההקלטה? אי אפשר יהיה לשחזר אותה.')) return false;
-    try { await DB.del(it.id); } catch (_) {}
+    await DB.del('rec');
     hideReview();
     return true;
   }
@@ -225,14 +230,9 @@
   $('rec-discard').addEventListener('click', discardDraft);
   $('rec-again').addEventListener('click', async () => { if (await discardDraft() !== false) toast('החזק לחוץ ודבר'); });
   $('rec-ok').addEventListener('click', () => {
-    const it = rec.item;
-    if (!it) return;
-    it.lang = state.lang;
-    rec.item = null; // keep the blob; it's now owned by the queue
+    if (!rec.item) return;
     recAudio.pause();
-    $('rec-review').hidden = true;
-    $('rec-idle').hidden = false;
-    startTranscription(it);
+    transcribe('rec', fileOf(rec.item));
   });
 
   /* ---------- Progress ring ---------- */
@@ -257,64 +257,37 @@
     e.hidden = false;
   }
 
-  /* ---------- Offline support ---------- */
-  function askNotify() {
-    if (!('Notification' in window) || Notification.permission !== 'default') return;
-    try {
-      if (localStorage.getItem('askedNotify')) return;
-      localStorage.setItem('askedNotify', '1');
-    } catch (_) {}
-    try { Notification.requestPermission().catch(() => {}); } catch (_) {}
+  /* ---------- Connection messages ---------- */
+  function offlineNotice() {
+    notice('אין חיבור לאינטרנט. ההקלטה נשמרה כאן — נסה שוב כשהחיבור יחזור.', { tone: 'warn', ms: 6000 });
   }
+  window.addEventListener('online', () => notice('החיבור לאינטרנט חזר ✓', { tone: 'ok', ms: 3500 }));
+  window.addEventListener('offline', () => notice('אין חיבור לאינטרנט', { tone: 'warn', ms: 3500 }));
 
-  function registerSync() {
-    if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.ready
-      .then((r) => r.sync && r.sync.register(SYNC_TAG))
-      .catch(() => {});
-  }
-
-  function savedForLater(msg) {
-    show('home');
-    renderPending();
-    registerSync();
-    notice(msg || 'אין חיבור לאינטרנט. ההקלטה נשמרה במכשיר ותתומלל אוטומטית כשהחיבור יחזור.');
-  }
-
-  /* ---------- Transcribe (with progress) ---------- */
+  /* ---------- Transcribe ---------- */
   $('btn-start').addEventListener('click', () => {
     if (!state.file) return;
     if (state.file.size > 5.5 * 1024 * 1024) {
       showError('הקובץ גדול מדי (מעל 5.5MB).');
       return;
     }
-    const f = state.file;
-    startTranscription({ id: newId(), blob: f, name: f.name || 'הקלטה', type: f.type || '', lang: state.lang, at: Date.now(), status: 'waiting' });
+    transcribe('file', state.file);
   });
 
-  // Every transcription goes through the device queue first, so a failure
-  // never loses the audio.
-  async function startTranscription(item) {
-    if (!navigator.onLine) askNotify(); // still inside the tap — permission prompt allowed
+  // source: 'rec' (in-app recording) or 'file' (uploaded / shared).
+  // The audio stays where it is until the transcription succeeds.
+  function transcribe(source, file) {
+    if (!file) return;
     $('home-error').hidden = true;
-    item.status = 'waiting';
-    item.retryAt = 0;
-    item.error = '';
-    try { await DB.put(item); } catch (_) {}
+    if (!navigator.onLine) { offlineNotice(); return; }
 
-    if (!navigator.onLine) { savedForLater(); return; }
-
-    let claimed = null;
-    try { claimed = await DB.claim(item.id, { force: true }); } catch (_) { claimed = item; }
-    if (!claimed) { toast('ההקלטה כבר בתמלול…'); renderPending(); return; }
-    runWithProgress(claimed);
-  }
-
-  function runWithProgress(item) {
-    const file = fileOf(item);
     show('loading');
     setProgress(0);
     state.cancelled = false;
+
+    const fd = new FormData();
+    fd.append('file', file, file.name || 'audio.webm');
+    fd.append('lang', state.lang);
 
     const xhr = new XMLHttpRequest();
     state.xhr = xhr;
@@ -322,36 +295,24 @@
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) setProgress((e.loaded / e.total) * 55); };
     xhr.upload.onload = () => { setProgress(Math.max(state.pct, 55)); startCreep(); };
 
-    const finish = async (status, data) => {
+    const finish = (status, data) => {
       stopCreep();
       state.xhr = null;
-      if (state.cancelled) {
-        item.status = 'paused';
-        item.lockAt = 0;
-        try { await DB.put(item); } catch (_) {}
-        show('home');
-        renderPending();
-        toast('בוטל. ההקלטה שמורה למטה ברשימה');
-        return;
-      }
-      const outcome = DB.classify(status, data);
-      if (outcome.text != null) {
+      if (state.cancelled) { show('home'); return; }
+      if (status >= 200 && status < 300 && data && typeof data.text === 'string') {
         setProgress(100);
-        const entry = saveHistory(outcome.text, item.lang, item.name);
-        try { await DB.del(item.id); } catch (_) {}
-        setTimeout(() => openResult(outcome.text, file, entry.id), 350);
+        const entry = saveHistory(data.text, state.lang, file.name);
+        if (source === 'rec') { DB.del('rec'); hideReview(); }
+        else { $('file-input').value = ''; setFile(null); }
+        setTimeout(() => openResult(data.text, file, entry.id), 350);
         return;
       }
-      try { await DB.settle(item, outcome); } catch (_) {}
-      if (outcome.retry) {
-        askNotify();
-        savedForLater(status === 0
-          ? 'החיבור נכשל. ההקלטה נשמרה במכשיר ותתומלל אוטומטית כשהחיבור יחזור.'
-          : (outcome.error || 'שירות התמלול לא זמין כרגע.') + ' ההקלטה נשמרה וננסה שוב בעוד רגע.');
+      show('home');
+      if (status === 0) {
+        if (!navigator.onLine) offlineNotice();
+        else notice('החיבור נכשל. ההקלטה נשמרה כאן — נסה שוב.', { tone: 'warn' });
       } else {
-        show('home');
-        renderPending();
-        showError(outcome.error);
+        showError((data && data.error) || 'התמלול נכשל. נסה שוב.');
       }
     };
 
@@ -362,156 +323,13 @@
     };
     xhr.onerror = () => finish(0, null);
     xhr.onabort = () => finish(0, null);
-    xhr.send(DB.formFor(item));
+    xhr.send(fd);
   }
 
   $('btn-cancel').addEventListener('click', () => {
     state.cancelled = true;
     if (state.xhr) state.xhr.abort();
   });
-
-  /* ---------- Background queue ---------- */
-  let processing = false;
-  async function processQueue() {
-    if (processing || !navigator.onLine || state.xhr) return;
-    processing = true;
-    try {
-      let items = [];
-      try { items = await DB.all(); } catch (_) {}
-      const due = items.filter((i) => DB.isDue(i)).sort((a, b) => a.at - b.at);
-      for (const it of due) {
-        if (!navigator.onLine || state.xhr) break;
-        await DB.send(it.id).catch(() => {});
-        renderPending();
-      }
-    } finally {
-      processing = false;
-      await collectDone();
-    }
-  }
-
-  // Move finished items (by the page or the service worker) into history.
-  async function collectDone() {
-    let items = [];
-    try { items = await DB.all(); } catch (_) { return; }
-    const done = items.filter((i) => i.status === 'done').sort((a, b) => a.at - b.at);
-    for (const it of done) {
-      const entry = saveHistory(it.text, it.lang, it.name);
-      try { await DB.del(it.id); } catch (_) {}
-      const file = fileOf(it);
-      notice('ההקלטה שנשמרה תומללה ✓', 'לצפייה', () => openResult(it.text, file, entry.id), 10000);
-    }
-    renderPending();
-  }
-
-  window.addEventListener('online', async () => {
-    let items = [];
-    try { items = await DB.all(); } catch (_) {}
-    if (items.some((i) => i.status === 'waiting' || i.status === 'sending')) toast('החיבור חזר — מתמללים את ההקלטות שנשמרו', 3000);
-    processQueue();
-  });
-  window.addEventListener('offline', renderPending);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) processQueue(); });
-  setInterval(() => { if (!document.hidden) processQueue(); }, 30000);
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (e) => {
-      if (e.data && e.data.type === 'pending-updated') collectDone();
-    });
-  }
-
-  /* ---------- Waiting list (on home) ---------- */
-  const pAudio = new Audio();
-  let pPlaying = null;
-  pAudio.addEventListener('ended', () => { pPlaying = null; renderPending(); });
-  pAudio.addEventListener('pause', () => { if (pPlaying) { pPlaying = null; renderPending(); } });
-
-  const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-  const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
-  const ICON_SEND = '<svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></svg>';
-  const ICON_X = '<svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-
-  function statusText(it) {
-    if (it.status === 'sending') return 'מתמללת…';
-    if (it.status === 'waiting') {
-      if (!navigator.onLine) return 'ממתינה לאינטרנט';
-      return it.error ? it.error + ' — ננסה שוב' : 'בתור לתמלול…';
-    }
-    if (it.status === 'error') return it.error || 'התמלול נכשל';
-    return 'לא נשלחה';
-  }
-
-  async function renderPending() {
-    let items = [];
-    try { items = await DB.all(); } catch (_) {}
-    const reviewId = rec.item && rec.item.id;
-    items = items.filter((i) => i.status !== 'done' && i.id !== reviewId).sort((a, b) => b.at - a.at);
-    $('pending').hidden = items.length === 0;
-    $('net-badge').hidden = navigator.onLine;
-    const ul = $('pending-list');
-    ul.innerHTML = '';
-    items.forEach((it) => {
-      const li = document.createElement('li');
-      li.className = 'pitem' + (it.status === 'error' ? ' is-error' : '');
-
-      const play = document.createElement('button');
-      play.className = 'pitem__play';
-      play.setAttribute('aria-label', 'השמע');
-      play.innerHTML = pPlaying === it.id ? ICON_PAUSE : ICON_PLAY;
-      play.disabled = !it.blob;
-      play.addEventListener('click', () => {
-        if (pPlaying === it.id) { pAudio.pause(); return; }
-        if (pAudio.src) URL.revokeObjectURL(pAudio.src);
-        pAudio.src = URL.createObjectURL(it.blob);
-        pAudio.play().catch(() => {});
-        pPlaying = it.id;
-        renderPending();
-      });
-
-      const info = document.createElement('div');
-      info.className = 'pitem__info';
-      const title = document.createElement('span');
-      title.className = 'pitem__title';
-      const d = new Date(it.at);
-      const today = d.toDateString() === new Date().toDateString();
-      title.textContent = 'הקלטה ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-        + (today ? '' : ' · ' + d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }));
-      const st = document.createElement('span');
-      st.className = 'pitem__status';
-      st.textContent = statusText(it);
-      info.append(title, st);
-
-      const send = document.createElement('button');
-      send.className = 'pitem__send';
-      send.setAttribute('aria-label', 'תמלל עכשיו');
-      send.innerHTML = ICON_SEND;
-      send.disabled = it.status === 'sending';
-      send.addEventListener('click', () => {
-        if (!navigator.onLine) {
-          it.status = 'waiting';
-          DB.put(it).then(renderPending).catch(() => {});
-          registerSync();
-          askNotify();
-          toast('אין אינטרנט — תתומלל אוטומטית כשהחיבור יחזור', 3000);
-          return;
-        }
-        startTranscription(it);
-      });
-
-      const del = document.createElement('button');
-      del.className = 'pitem__x';
-      del.setAttribute('aria-label', 'מחק הקלטה');
-      del.innerHTML = ICON_X;
-      del.addEventListener('click', async () => {
-        if (!confirm('למחוק את ההקלטה? אי אפשר יהיה לשחזר אותה.')) return;
-        if (pPlaying === it.id) pAudio.pause();
-        try { await DB.del(it.id); } catch (_) {}
-        renderPending();
-      });
-
-      li.append(play, info, send, del);
-      ul.appendChild(li);
-    });
-  }
 
   /* ---------- Result ---------- */
   function openResult(text, file, id) {
@@ -572,10 +390,7 @@
   $('btn-new').addEventListener('click', () => {
     if (state.editing) setEditing(false);
     $('audio').pause();
-    $('file-input').value = '';
-    setFile(null);
     renderHistory();
-    renderPending();
     show('home');
   });
 
@@ -735,11 +550,10 @@
       const blob = await res.blob();
       const name = decodeURIComponent(res.headers.get('X-Filename') || 'הקלטה.ogg');
       const file = new File([blob], name, { type: blob.type || 'audio/ogg' });
-      // Move it into the device queue before removing it from the share inbox.
-      const item = { id: newId(), blob: file, name, type: file.type, lang: state.lang, at: Date.now(), status: 'waiting' };
-      try { await DB.put(item); } catch (_) {}
+      // Keep it on the device before removing it from the share inbox.
+      await DB.put({ id: 'file', blob: file, name, type: file.type });
       await cache.delete(SHARE_KEY);
-      return item;
+      return file;
     } catch (_) {
       return null;
     }
@@ -757,26 +571,18 @@
     renderHistory();
     const shared = await takeSharedFile();
 
-    // Restore a recording the user hadn't confirmed yet (app was closed during review).
-    if (!shared) {
-      try {
-        const drafts = (await DB.all()).filter((i) => i.status === 'draft').sort((a, b) => b.at - a.at);
-        if (drafts[0]) showReview(drafts[0]);
-      } catch (_) {}
-    }
-    await renderPending();
+    // Bring back whatever was waiting when the app was closed.
+    const [savedRec, savedFile] = await Promise.all([DB.get('rec'), DB.get('file')]);
+    if (savedRec && savedRec.blob) showReview(savedRec);
+    if (shared) setFile(shared, { persist: false });
+    else if (savedFile && savedFile.blob) setFile(fileOf(savedFile), { persist: false });
 
     const wait = Math.max(0, MIN_SPLASH - (performance.now() - started));
     await new Promise((r) => setTimeout(r, wait));
     $('splash').classList.add('is-gone');
     setTimeout(() => $('splash').remove(), 800);
 
-    if (shared) {
-      setFile(fileOf(shared));
-      startTranscription(shared);
-    } else {
-      processQueue();
-    }
+    if (shared) transcribe('file', shared);
   }
 
   if (document.readyState === 'complete') boot();

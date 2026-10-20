@@ -1,6 +1,4 @@
-importScripts('/idb.js');
-
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL_CACHE = 'shell-' + VERSION;
 const SHARE_CACHE = 'share-inbox';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/idb.js', '/logo.png', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
@@ -57,50 +55,3 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
-// ---------- Recordings saved while offline ----------
-// Chrome fires this when connectivity returns, even if the app is closed.
-self.addEventListener('sync', (e) => {
-  if (e.tag === 'transcribe-pending') e.waitUntil(flushPending());
-});
-
-async function flushPending() {
-  const items = (await PendingDB.all()).filter((i) => PendingDB.isDue(i)).sort((a, b) => a.at - b.at);
-  let done = 0;
-  let retry = false;
-  let lastText = '';
-  for (const it of items) {
-    const r = await PendingDB.send(it.id).catch(() => null);
-    if (!r) continue;
-    if (r.status === 'done') { done++; lastText = r.text || ''; }
-    else if (r.status === 'waiting') retry = true;
-  }
-
-  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  clients.forEach((c) => c.postMessage({ type: 'pending-updated' }));
-  const visible = clients.some((c) => c.visibilityState === 'visible');
-
-  if (done && !visible && self.Notification && Notification.permission === 'granted') {
-    await self.registration.showNotification(done > 1 ? `${done} הקלטות תומללו` : 'ההקלטה שלך תומללה', {
-      body: lastText.replace(/\s+/g, ' ').slice(0, 140),
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: 'transcribed',
-      lang: 'he',
-      dir: 'rtl',
-    });
-  }
-  if (retry) throw new Error('retry later'); // the browser retries the sync with backoff
-}
-
-self.addEventListener('notificationclick', (e) => {
-  e.notification.close();
-  e.waitUntil((async () => {
-    const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    if (cs[0]) {
-      await cs[0].focus();
-      cs[0].postMessage({ type: 'pending-updated' });
-    } else {
-      await self.clients.openWindow('/');
-    }
-  })());
-});

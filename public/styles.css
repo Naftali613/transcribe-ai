@@ -295,38 +295,6 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .sheet__panel--tall .history__list { overflow-y: auto; flex: 1 1 auto; padding-bottom: 2px; }
 .sheet__close { margin-top: 16px; font-size: 19px; }
 
-/* ---------- Waiting list ---------- */
-.pending { margin-bottom: 16px; padding: 16px 16px 14px; border-color: var(--terra-tint); }
-.pending__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.pending__head h2 { margin: 0; font-size: 20px; font-weight: 700; }
-.net {
-  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  background: var(--terra-tint); color: var(--terra-deep); border-radius: 999px; padding: 3px 10px; font-size: 14px; font-weight: 600;
-}
-.net .icon { width: 16px; height: 16px; }
-.pending__sub { margin: 4px 0 12px; color: var(--ink-soft); font-size: 15px; }
-.pending__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.pitem {
-  min-width: 0; display: flex; align-items: center; gap: 10px;
-  background: var(--bg); border-radius: 14px; padding: 8px 8px 8px 10px;
-}
-.pitem__play { width: 40px; height: 40px; border-radius: 50%; background: var(--ink); display: grid; place-items: center; flex: none; }
-.pitem__play svg { width: 18px; height: 18px; fill: #fff; }
-.pitem__play:disabled { opacity: .35; }
-.pitem__info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.pitem__title { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; }
-.pitem__status { font-size: 14px; color: var(--sage-deep); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pitem.is-error .pitem__status { color: var(--terra-deep); }
-.pitem__send {
-  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex: none;
-  background: var(--terra); color: #fff;
-}
-.pitem__send .icon { width: 20px; height: 20px; stroke-width: 2.2; }
-.pitem__send:disabled { opacity: .4; }
-.pitem__x { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--sage-deep); }
-.pitem__x .icon { width: 19px; height: 19px; }
-.pitem__x:active { background: var(--sage-tint); }
-
 /* ---------- Notice banner ---------- */
 .notice {
   position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 50%; z-index: 70;
@@ -337,6 +305,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   box-shadow: 0 10px 30px rgba(42, 41, 38, .25);
 }
 .notice.is-on { opacity: 1; transform: translate(-50%, 0); }
+.notice.is-ok { background: var(--wa); }
+.notice.is-warn { background: var(--terra-deep); }
+.notice.is-ok .notice__x, .notice.is-warn .notice__x { color: rgba(255,255,255,.85); }
 .notice__text { flex: 1; min-width: 0; font-size: 15px; line-height: 1.4; }
 .notice__btn {
   flex: none; background: var(--terra); color: #fff; border-radius: 999px; padding: 6px 14px;
