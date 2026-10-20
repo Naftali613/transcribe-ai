@@ -4,6 +4,7 @@
   const HISTORY_KEY = 'transcripts.v1';
   const SHARE_CACHE = 'share-inbox';
   const SHARE_KEY = '/shared-audio';
+  const APP_VERSION = '8';
   const RING_LEN = 326.7;
 
   const fmt = (s) => {
@@ -561,13 +562,30 @@
 
   /* ---------- Boot ---------- */
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    // Pick up new versions by itself: when a new service worker takes over,
+    // reload once the user isn't in the middle of recording or transcribing.
+    let hadController = !!navigator.serviceWorker.controller;
+    let reloadPending = false;
+    const reloadWhenIdle = () => {
+      if (rec.mr || state.xhr || state.editing) { setTimeout(reloadWhenIdle, 1500); return; }
+      location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; } // first install, nothing to refresh
+      if (reloadPending) return;
+      reloadPending = true;
+      reloadWhenIdle();
+    });
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {});
   }
 
   const started = performance.now();
   const MIN_SPLASH = 1100;
 
   async function boot() {
+    $('app-version').textContent = 'גרסה ' + APP_VERSION;
     renderHistory();
     const shared = await takeSharedFile();
 

@@ -1,4 +1,4 @@
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL_CACHE = 'shell-' + VERSION;
 const SHARE_CACHE = 'share-inbox';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/idb.js', '/logo.png', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
