@@ -3,19 +3,32 @@
 // Slots: 'rec' – the in-app recording under review, 'file' – the chosen/shared file.
 // A slot is cleared only after a successful transcription or when the user removes it.
 window.SlotDB = (() => {
-  const DB = 'transcribe-ai';
+  // A fresh database name: the old one ('transcribe-ai') needed a version
+  // upgrade, which hangs forever if an older copy of the app is still open.
+  const DB = 'transcribe-slots';
   const STORE = 'slots';
+  const OPEN_TIMEOUT = 3000;
+
+  try { indexedDB.deleteDatabase('transcribe-ai'); } catch (_) {}
 
   function open() {
     return new Promise((resolve, reject) => {
-      const r = indexedDB.open(DB, 2);
+      let settled = false;
+      const done = (fn, v) => { if (!settled) { settled = true; clearTimeout(timer); fn(v); } };
+      const timer = setTimeout(() => done(reject, new Error('idb timeout')), OPEN_TIMEOUT);
+      let r;
+      try { r = indexedDB.open(DB, 1); } catch (e) { done(reject, e); return; }
       r.onupgradeneeded = () => {
-        const db = r.result;
-        if (db.objectStoreNames.contains('pending')) db.deleteObjectStore('pending');
-        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+        if (!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE, { keyPath: 'id' });
       };
-      r.onsuccess = () => resolve(r.result);
-      r.onerror = () => reject(r.error);
+      r.onblocked = () => done(reject, new Error('idb blocked'));
+      r.onsuccess = () => {
+        const db = r.result;
+        db.onversionchange = () => db.close(); // never block a newer version
+        if (settled) { db.close(); return; }
+        done(resolve, db);
+      };
+      r.onerror = () => done(reject, r.error);
     });
   }
 

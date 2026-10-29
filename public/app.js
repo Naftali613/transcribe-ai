@@ -4,7 +4,7 @@
   const HISTORY_KEY = 'transcripts.v1';
   const SHARE_CACHE = 'share-inbox';
   const SHARE_KEY = '/shared-audio';
-  const APP_VERSION = '8';
+  const APP_VERSION = '9';
   const RING_LEN = 326.7;
 
   const fmt = (s) => {
@@ -267,12 +267,7 @@
 
   /* ---------- Transcribe ---------- */
   $('btn-start').addEventListener('click', () => {
-    if (!state.file) return;
-    if (state.file.size > 5.5 * 1024 * 1024) {
-      showError('הקובץ גדול מדי (מעל 5.5MB).');
-      return;
-    }
-    transcribe('file', state.file);
+    if (state.file) transcribe('file', state.file);
   });
 
   // source: 'rec' (in-app recording) or 'file' (uploaded / shared).
@@ -280,6 +275,11 @@
   function transcribe(source, file) {
     if (!file) return;
     $('home-error').hidden = true;
+    if (file.size > 5.5 * 1024 * 1024) {
+      show('home');
+      showError('הקובץ גדול מדי לתמלול (מעל 5.5MB, בערך שעה של הקלטה).');
+      return;
+    }
     if (!navigator.onLine) { offlineNotice(); return; }
 
     show('loading');
