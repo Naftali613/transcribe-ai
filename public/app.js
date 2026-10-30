@@ -4,7 +4,7 @@
   const HISTORY_KEY = 'transcripts.v1';
   const SHARE_CACHE = 'share-inbox';
   const SHARE_KEY = '/shared-audio';
-  const APP_VERSION = '9';
+  const APP_VERSION = '10';
   const RING_LEN = 326.7;
 
   const fmt = (s) => {
@@ -15,7 +15,19 @@
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const fileOf = (it) => (it && it.blob ? new File([it.blob], it.name || 'הקלטה.webm', { type: it.type || it.blob.type || 'audio/webm' }) : null);
 
-  const state = { file: null, lang: 'he', xhr: null, creep: null, url: null, editing: false, cancelled: false };
+  const state = { file: null, lang: 'he', xhr: null, creep: null, url: null, editing: false, cancelled: false, booting: true, source: '' };
+
+  // Small anonymous reports (no audio, no text) so problems can be traced in the server logs.
+  function diag(event, data = {}) {
+    try {
+      const body = JSON.stringify({ event, v: APP_VERSION, standalone: matchMedia('(display-mode: standalone)').matches, ...data });
+      if (!(navigator.sendBeacon && navigator.sendBeacon('/api/log', body))) {
+        fetch('/api/log', { method: 'POST', body, keepalive: true }).catch(() => {});
+      }
+    } catch (_) {}
+  }
+  window.addEventListener('error', (e) => diag('js-error', { msg: String(e.message).slice(0, 200), line: e.lineno }));
+  window.addEventListener('unhandledrejection', (e) => diag('js-rejection', { msg: String(e.reason && e.reason.message || e.reason).slice(0, 200) }));
 
   /* ---------- Screens & messages ---------- */
   function show(name) {
@@ -275,6 +287,10 @@
   function transcribe(source, file) {
     if (!file) return;
     $('home-error').hidden = true;
+    if (state.source === 'share' && (!navigator.onLine || file.size > 5.5 * 1024 * 1024)) {
+      diag('share-transcribe-skipped', { online: navigator.onLine, size: file.size });
+      state.source = '';
+    }
     if (file.size > 5.5 * 1024 * 1024) {
       show('home');
       showError('הקובץ גדול מדי לתמלול (מעל 5.5MB, בערך שעה של הקלטה).');
@@ -299,6 +315,8 @@
     const finish = (status, data) => {
       stopCreep();
       state.xhr = null;
+      if (state.source === 'share') diag('share-transcribe-done', { status, cancelled: state.cancelled, err: data && data.error });
+      state.source = '';
       if (state.cancelled) { show('home'); return; }
       if (status >= 200 && status < 300 && data && typeof data.text === 'string') {
         setProgress(100);
@@ -539,23 +557,36 @@
   }
 
   /* ---------- Shared from WhatsApp ---------- */
+  // The service worker leaves the shared file in a cache. We check it on every
+  // start (not only when the URL says ?shared), so a reload can't lose it.
   async function takeSharedFile() {
     const params = new URLSearchParams(location.search);
-    if (!params.has('shared')) return null;
-    history.replaceState(null, '', '/');
-    if (!('caches' in window)) return null;
+    const viaShare = params.has('shared');
+    if (viaShare) history.replaceState(null, '', '/');
+    if (!('caches' in window)) { if (viaShare) diag('share-open', { error: 'no-caches' }); return null; }
     try {
       const cache = await caches.open(SHARE_CACHE);
+      const metaRes = await cache.match('/share-meta');
+      const meta = metaRes ? await metaRes.json().catch(() => null) : null;
+      if (metaRes) await cache.delete('/share-meta');
       const res = await cache.match(SHARE_KEY);
-      if (!res) return null;
+      if (!res) {
+        if (viaShare || meta) {
+          diag('share-open', { found: false, viaShare, meta });
+          notice('ההקלטה ששיתפת לא הגיעה לאפליקציה. נסה לשתף שוב.', { tone: 'warn', ms: 7000 });
+        }
+        return null;
+      }
       const blob = await res.blob();
       const name = decodeURIComponent(res.headers.get('X-Filename') || 'הקלטה.ogg');
       const file = new File([blob], name, { type: blob.type || 'audio/ogg' });
+      diag('share-open', { found: true, viaShare, size: file.size, type: file.type, name, meta });
       // Keep it on the device before removing it from the share inbox.
       await DB.put({ id: 'file', blob: file, name, type: file.type });
       await cache.delete(SHARE_KEY);
       return file;
-    } catch (_) {
+    } catch (err) {
+      diag('share-open', { error: String(err && err.message || err) });
       return null;
     }
   }
@@ -567,7 +598,7 @@
     let hadController = !!navigator.serviceWorker.controller;
     let reloadPending = false;
     const reloadWhenIdle = () => {
-      if (rec.mr || state.xhr || state.editing) { setTimeout(reloadWhenIdle, 1500); return; }
+      if (state.booting || rec.mr || state.xhr || state.editing) { setTimeout(reloadWhenIdle, 1500); return; }
       location.reload();
     };
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -587,20 +618,30 @@
   async function boot() {
     $('app-version').textContent = 'גרסה ' + APP_VERSION;
     renderHistory();
-    const shared = await takeSharedFile();
+    let shared = null;
+    try {
+      shared = await takeSharedFile();
 
-    // Bring back whatever was waiting when the app was closed.
-    const [savedRec, savedFile] = await Promise.all([DB.get('rec'), DB.get('file')]);
-    if (savedRec && savedRec.blob) showReview(savedRec);
-    if (shared) setFile(shared, { persist: false });
-    else if (savedFile && savedFile.blob) setFile(fileOf(savedFile), { persist: false });
+      // Bring back whatever was waiting when the app was closed.
+      const [savedRec, savedFile] = await Promise.all([DB.get('rec'), DB.get('file')]);
+      if (savedRec && savedRec.blob) showReview(savedRec);
+      if (shared) setFile(shared, { persist: false });
+      else if (savedFile && savedFile.blob) setFile(fileOf(savedFile), { persist: false });
+    } catch (err) {
+      diag('boot-error', { msg: String(err && err.message || err) });
+    }
 
     const wait = Math.max(0, MIN_SPLASH - (performance.now() - started));
     await new Promise((r) => setTimeout(r, wait));
     $('splash').classList.add('is-gone');
-    setTimeout(() => $('splash').remove(), 800);
+    setTimeout(() => { const sp = $('splash'); if (sp) sp.remove(); }, 800);
 
-    if (shared) transcribe('file', shared);
+    if (shared) {
+      state.source = 'share';
+      diag('share-transcribe-start', { online: navigator.onLine, size: shared.size });
+      transcribe('file', shared);
+    }
+    state.booting = false;
   }
 
   if (document.readyState === 'complete') boot();

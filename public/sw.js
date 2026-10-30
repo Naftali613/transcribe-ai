@@ -1,4 +1,4 @@
-const VERSION = 'v9';
+const VERSION = 'v10';
 const SHELL_CACHE = 'shell-' + VERSION;
 const SHARE_CACHE = 'share-inbox';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/idb.js', '/logo.png', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
@@ -21,19 +21,36 @@ self.addEventListener('fetch', (e) => {
   // Audio shared from WhatsApp (Web Share Target)
   if (e.request.method === 'POST' && url.pathname === '/share-target') {
     e.respondWith((async () => {
+      const meta = { at: Date.now(), fields: [], stored: false, error: '' };
       try {
         const form = await e.request.formData();
-        const file = form.getAll('audio').find((f) => f && typeof f === 'object');
+        let file = null;
+        for (const [key, val] of form.entries()) {
+          if (val && typeof val === 'object') {
+            meta.fields.push(`${key}: ${val.type || '?'} | ${val.name || '?'} | ${val.size}`);
+            if (!file) file = val; // take the first file, whatever field it came in
+          } else {
+            meta.fields.push(`${key}: text(${String(val).length})`);
+          }
+        }
+        const cache = await caches.open(SHARE_CACHE);
         if (file) {
-          const cache = await caches.open(SHARE_CACHE);
           await cache.put('/shared-audio', new Response(file, {
             headers: {
               'Content-Type': file.type || 'audio/ogg',
               'X-Filename': encodeURIComponent(file.name || 'הקלטה.ogg'),
             },
           }));
+          meta.stored = true;
         }
-      } catch (_) {}
+        await cache.put('/share-meta', new Response(JSON.stringify(meta), { headers: { 'Content-Type': 'application/json' } }));
+      } catch (err) {
+        meta.error = String(err && err.message || err);
+        try {
+          const cache = await caches.open(SHARE_CACHE);
+          await cache.put('/share-meta', new Response(JSON.stringify(meta), { headers: { 'Content-Type': 'application/json' } }));
+        } catch (_) {}
+      }
       return Response.redirect('/?shared=1', 303);
     })());
     return;
